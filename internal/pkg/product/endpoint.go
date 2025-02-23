@@ -1,9 +1,11 @@
 package product
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"food-delivery-workshop/internal/get"
 	"net/http"
 	"strconv"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 // Create Create product
@@ -29,8 +31,8 @@ func Create(c *fiber.Ctx, service Service) error {
 
 	if err := validateProductReq(request); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-            "error": err.Error(),
-        })
+			"error": err.Error(),
+		})
 	}
 
 	product, err := service.Create(c, request)
@@ -79,12 +81,13 @@ func Update(c *fiber.Ctx, service Service) error {
 	}
 
 	if err := validateProductReq(request); err != nil {
-        return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-            "error": err.Error(),
-        })
-    }
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
 
-	updatedProduct, err := service.Update(c, uint(productID), request)
+	request.ID = uint(productID)
+	updatedProduct, err := service.Update(c, request)
 	if err != nil {
 		if err.Error() == "product not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -122,7 +125,9 @@ func Delete(c *fiber.Ctx, service Service) error {
 		})
 	}
 
-	err = service.Delete(c, uint(productID))
+	productIDUint := uint(productID)
+	ID := &get.GetOne[uint]{ID: productIDUint}
+	err = service.Delete(c, ID)
 	if err != nil {
 		if err.Error() == "product not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -175,13 +180,15 @@ func GetAllProduct(c *fiber.Ctx, service Service) error {
 // @Router /products/{id} [get]
 func GetProductByID(c *fiber.Ctx, service Service) error {
 	productIDstr := c.Params("id")
-	productID, err := strconv.ParseUint(productIDstr, 10, 32)
+	productID, err := strconv.ParseUint(productIDstr, 10, 0)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid product ID",
 		})
 	}
-	product, err := service.GetProductByID(uint(productID))
+	productIDUint := uint(productID)
+	ID := &get.GetOne[uint]{ID: productIDUint}
+	product, err := service.GetProductByID(ID)
 	if err != nil {
 		if err.Error() == "product not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{

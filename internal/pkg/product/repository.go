@@ -2,6 +2,7 @@ package product
 
 import (
 	"food-delivery-workshop/internal/models"
+
 	"gorm.io/gorm"
 )
 
@@ -11,8 +12,9 @@ type Repository interface {
 	FindByID(id uint, product *models.Product) error
 	FindAll() ([]models.Product, error)
 	Delete(id uint) error
-	Preload(product interface{}) error
 	FindByProductName(name string) (*models.Product, error)
+	FindByProductID(productID uint) (*models.Product, error)
+	DeleteCartItemByProductID(productID uint) error
 }
 
 type repository struct {
@@ -23,9 +25,9 @@ func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
 
-func (r* repository) Preload(product interface{}) error {
+func (r *repository) Preload(product interface{}) error {
 	return r.db.Preload("Promotion").
-	Find(product).Error
+		Find(product).Error
 }
 
 func (r *repository) Create(product *models.Product) error {
@@ -58,17 +60,36 @@ func (r *repository) Update(product *models.Product) error {
 }
 
 func (r *repository) Delete(id uint) error {
-	if err := r.db.Where("id =?", id).Delete(&models.Product{}).Error; err!= nil {
-        return err
-    }
+	if err := r.db.Where("id =?", id).Delete(&models.Product{}).Error; err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (r *repository) FindByProductName(name string) (*models.Product, error) {
 	var product models.Product
-    if err := r.db.Where("name =?", name).First(&product).Error; err != nil {
-        return nil, err
-    }
-    return &product, nil
+	if err := r.db.Where("name =?", name).First(&product).Error; err != nil {
+		return nil, err
+	}
+	return &product, nil
+}
+
+func (r *repository) FindByProductID(productID uint) (*models.Product, error) {
+	product := &models.Product{}
+	err := r.db.
+		Preload("Promotion").
+		Where("id = ? AND deleted_at IS NULL", productID).
+		First(product).Error
+	if err != nil {
+		return nil, err
+	}
+	return product, nil
+}
+
+func (r *repository) DeleteCartItemByProductID(productID uint) error {
+	if err := r.db.Where("product_id =?", productID).Delete(&models.CartItem{}).Error; err != nil {
+		return err
+	}
+	return nil
 }

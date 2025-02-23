@@ -4,6 +4,7 @@ import (
 	"food-delivery-workshop/internal/auth"
 	"net/http"
 	"github.com/gofiber/fiber/v2"
+	"food-delivery-workshop/internal/get"
 )
 
 // RegisterUser register
@@ -12,7 +13,7 @@ import (
 // @Tags user
 // @Accept  json
 // @Produce  json
-// @Param user body CreateRequest true "User Registration Data"
+// @Param user body CreateRequest true "User Registration"
 // @Success 201 {object} CreateRequest
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -103,8 +104,10 @@ func GetUserByID(c *fiber.Ctx, service Service) error {
 		})
 	}
 
-	userID := uint(authUserIDUint)
-	user, err := service.GetUserByID(uint(userID))
+	request := get.GetOne[uint]{
+		ID: uint(authUserIDUint),
+	}
+	user, err := service.GetUserByID(request)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": "User not found",

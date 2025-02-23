@@ -10,12 +10,9 @@ import (
 type Repository interface {
 	CreateCartItem(cartItem *models.CartItem) error
 	FindCartByUserID(userID uint) (*models.Cart, error)
-	FindByProductID(productID uint) (*models.Product, error)
 	CreateCart(cart *models.Cart) error
 	UpdateCart(cart *models.Cart) error
 	UpdateCartItem(cart *models.CartItem) error
-	FindPromotionByCode(code string) (*models.Promotion, error)
-	FindPromotionByID(promotionID uint) (*models.Promotion, error)
 	FindCartItem(cartID uint, productID uint) (*models.CartItem, error)
 	DeleteCartItem(cartID uint, productID uint) error
 	RemoveItem(cartID uint, cartItemID uint) error
@@ -46,33 +43,14 @@ func (r *repository) CreateCartItem(cartItem *models.CartItem) error {
 
 func (r *repository) FindCartByUserID(userID uint) (*models.Cart, error) {
 	cart := &models.Cart{}
-	err := r.db.Preload("CartItems.Product").Where("user_id = ?", userID).First(cart).Error
+	err := r.db.Preload("CartItems.Product").
+	Preload("Promotion").
+	Where("user_id = ?", userID).First(cart).Error
 	if err != nil {
 		return nil, err
 	}
 
 	return cart, nil
-}
-
-func (r *repository) FindByProductID(productID uint) (*models.Product, error) {
-	product := &models.Product{}
-	err := r.db.
-		Preload("Promotion").
-		Where("id =?", productID).
-		First(product).Error
-	if err != nil {
-		return nil, err
-	}
-	return product, nil
-}
-
-func (r *repository) FindPromotionByCode(code string) (*models.Promotion, error) {
-	promotion := &models.Promotion{}
-    err := r.db.Preload("Product").Where("code =?", code).First(promotion).Error
-    if err != nil {
-        return nil, err
-    }
-    return promotion, nil
 }
 
 func (r *repository) CreateCart(cart *models.Cart) error {
@@ -127,15 +105,6 @@ func (r *repository) RemoveItem(cartID uint, cartItemID uint) error {
 	return nil
 }
 
-func (r *repository) FindPromotionByID(promotionID uint) (*models.Promotion, error) {
-	promotion := &models.Promotion{}
-	err := r.db.Where("id = ?", promotionID).First(promotion).Error
-	if err != nil {
-		return nil, err
-	}
-	return promotion, nil
-}
-
 func (r *repository) DeleteCart(cartID uint) error {
 	if err := r.db.Where("id =?", cartID).Delete(&models.Cart{}).Error; err != nil {
         return err
@@ -161,7 +130,8 @@ func (r *repository) CountCartItems(cartID uint) (int64, error) {
 
 func (r *repository) FindCartItemsByCartID(cartID uint) ([]*models.CartItem, error) {
 	var cartItems []*models.CartItem
-	err := r.db.Where("cart_id =?", cartID).Preload("Product").Find(&cartItems).Error
+	err := r.db.Preload("Product").
+	Where("cart_id =?", cartID).Find(&cartItems).Error
 	if err != nil {
 		return nil, err
 	}

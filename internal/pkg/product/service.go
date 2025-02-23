@@ -2,6 +2,7 @@ package product
 
 import (
 	"errors"
+	"food-delivery-workshop/internal/get"
 	"food-delivery-workshop/internal/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
@@ -11,10 +12,10 @@ import (
 
 type Service interface {
 	Create(c *fiber.Ctx, request *CreateRequest) (*models.Product, error)
-	Update(c *fiber.Ctx, productID uint, request *UpdateRequest) (*models.Product, error)
-	GetProductByID(id uint) (*models.Product, error)
+	Update(c *fiber.Ctx, request *UpdateRequest) (*models.Product, error)
+	GetProductByID(request *get.GetOne[uint]) (*models.Product, error)
 	GetAllProducts() ([]models.Product, error)
-	Delete(c *fiber.Ctx, id uint) error
+	Delete(c *fiber.Ctx, request *get.GetOne[uint]) error
 }
 
 type service struct {
@@ -22,7 +23,7 @@ type service struct {
 }
 
 func NewService(repo Repository) Service {
-	return &service{repo}
+	return &service{repo: repo}
 }
 
 // Create create a product
@@ -48,9 +49,9 @@ func (s *service) Create(c *fiber.Ctx, request *CreateRequest) (*models.Product,
 	return product, nil
 }
 
-func (s *service) Update(c *fiber.Ctx, id uint, request *UpdateRequest) (*models.Product, error) {
+func (s *service) Update(c *fiber.Ctx, request *UpdateRequest) (*models.Product, error) {
 	product := &models.Product{}
-	if err := s.repo.FindByID(id, product); err != nil {
+	if err := s.repo.FindByID(request.ID, product); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("product not found")
 		}
@@ -76,12 +77,12 @@ func (s *service) Update(c *fiber.Ctx, id uint, request *UpdateRequest) (*models
 	return product, nil
 }
 
-func (s *service) GetProductByID(id uint) (*models.Product, error) {
+func (s *service) GetProductByID(request *get.GetOne[uint]) (*models.Product, error) {
 	product := &models.Product{}
-	if err := s.repo.FindByID(id, product); err != nil {
+	if err := s.repo.FindByID(request.GetID(), product); err != nil {
 		return nil, err
 	}
-	//s.repo.Preload(product)
+	
 	return product, nil
 }
 
@@ -94,13 +95,18 @@ func (s *service) GetAllProducts() ([]models.Product, error) {
 	return products, nil
 }
 
-func (s *service) Delete(c *fiber.Ctx, id uint) error {
+func (s *service) Delete(c *fiber.Ctx, request *get.GetOne[uint]) error {
 	product := &models.Product{}
-	if err := s.repo.FindByID(id, product); err != nil {
+	if err := s.repo.FindByID(request.GetID(), product); err != nil {
 		return errors.New("product not found")
 	}
 
-	err := s.repo.Delete(id)
+	if err := s.repo.DeleteCartItemByProductID(product.ID); err != nil {
+		logrus.Errorf("delete cart item error: %v", err)
+		return err
+	}
+	
+	err := s.repo.Delete(product.ID)
 	if err != nil {
 		logrus.Errorf("delete product error: %v", err)
 		return err

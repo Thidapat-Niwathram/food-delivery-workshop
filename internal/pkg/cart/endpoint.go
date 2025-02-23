@@ -27,7 +27,8 @@ func Create(c *fiber.Ctx, service Service) error {
 		})
 	}
 
-	cartItem, err := service.Create(c, uint(userID), request)
+	request.UserID = uint(userID)
+	cartItem, err := service.Create(c, request)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
@@ -60,7 +61,8 @@ func Update(c *fiber.Ctx, service Service) error {
 		})
 	}
 
-	updateCart, err := service.Update(c, uint(userID), request)
+	request.UserID = uint(userID)
+	updateCart, err := service.Update(c, request)
 	if err != nil {
 		if err.Error() == "cart not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -96,7 +98,9 @@ func ApplyPromotion(c *fiber.Ctx, service Service) error {
 			"error": "Invalid request body",
 		})
 	}
-	cart, err := service.ApplyPromotion(c, uint(userID), request.PromotionCode)
+
+	request.UserID = uint(userID)
+	cart, err := service.ApplyPromotion(c, request)
 	if err != nil {
 		if err.Error() == "cart not found" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -133,7 +137,7 @@ func RemoveCartItem(c *fiber.Ctx, service Service) error {
 		})
 	}
 
-	updatedCart, err := service.RemoveItem(c, uint(userID), uint(productID))
+	updatedCart, err := service.RemoveItem(c, &RemoveItemRequest{UserID: uint(userID), ProductID: uint(productID)})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
@@ -157,7 +161,7 @@ func RemoveCartItem(c *fiber.Ctx, service Service) error {
 // @Security ApiKeyAuth
 func GetAllCart(c *fiber.Ctx, service Service) error {
     userID := c.Locals("user_id").(float64)
-    cart, err := service.GetAllCart(c, uint(userID))
+    cart, err := service.GetAllCart(c, &GetAllRequests{UserID: uint(userID)})
     if err != nil {
         return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
             "error": err.Error(),

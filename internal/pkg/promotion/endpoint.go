@@ -1,6 +1,7 @@
 package promotion
 
 import (
+	"food-delivery-workshop/internal/get"
 	"github.com/gofiber/fiber/v2"
 	"net/http"
 	"strconv"
@@ -79,13 +80,15 @@ func Update(c *fiber.Ctx, service Service) error {
 		})
 	}
 
-    if err := validatePromotionReq(request); err != nil {
+	if err := validatePromotionReq(request); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
-	updatedPromotion, err := service.Update(c, uint(promotionID), request)
+
+	request.ID = uint(promotionID)
+	updatedPromotion, err := service.Update(c, request)
 	if err != nil {
 		if err.Error() == "promotion not found" || err.Error() == "promotion is already exist" {
 			return c.Status(http.StatusNotFound).JSON(fiber.Map{
@@ -122,7 +125,9 @@ func Delete(c *fiber.Ctx, service Service) error {
 		})
 	}
 
-	err = service.Delete(c, uint(promotionID))
+	promotionIDUint := uint(promotionID)
+	ID := &get.GetOne[uint]{ID: promotionIDUint}
+	err = service.Delete(c, ID)
 	if err != nil {
 		if err.Error() == "Promotion not found" {
 			return c.Status(http.StatusNotFound).JSON(fiber.Map{
@@ -179,7 +184,10 @@ func GetPromotionByID(c *fiber.Ctx, service Service) error {
 		})
 	}
 
-	promotion, err := service.GetByID(uint(promotionID))
+	request := &get.GetOne[uint]{
+		ID: uint(promotionID),
+	}
+	promotion, err := service.GetByID(request)
 	if err != nil {
 		if err.Error() == "Promotion not found" {
 			return c.Status(http.StatusNotFound).JSON(fiber.Map{

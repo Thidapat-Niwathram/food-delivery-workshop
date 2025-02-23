@@ -11,5 +11,6 @@ type CreateRequest struct {
 }
 
 type UpdateRequest struct {
+	ID uint `json:"-" path:"id"`
 	Request
 }

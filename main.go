@@ -22,10 +22,10 @@ func main() {
 	userService := user.NewService(userRepository)
 	productRepository := product.NewRepository(database.DB)
 	productService := product.NewService(productRepository)
-	cartRepository := cart.NewRepository(database.DB)
-	cartService := cart.NewService(cartRepository)
 	promotionRepository := promotion.NewRepository(database.DB)
-	promotionService := promotion.NewService(promotionRepository, productRepository, cartRepository)
+	promotionService := promotion.NewService(promotionRepository)
+	cartRepository := cart.NewRepository(database.DB)
+	cartService := cart.NewService(cartRepository,promotionRepository, productRepository)
 
 	app := fiber.New()
 

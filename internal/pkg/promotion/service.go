@@ -3,34 +3,31 @@ package promotion
 import (
 	"errors"
 	"food-delivery-workshop/internal/models"
-	product "food-delivery-workshop/internal/pkg/product"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
-	cart "food-delivery-workshop/internal/pkg/cart"
+	"food-delivery-workshop/internal/get"
 )
 
 type Service interface {
 	Create(c *fiber.Ctx, request *CreateRequest) (*models.Promotion, error)
-	Update(c *fiber.Ctx, id uint, request *UpdateRequest) (*models.Promotion, error)
-	GetByID(id uint) (*models.Promotion, error)
+	Update(c *fiber.Ctx, request *UpdateRequest) (*models.Promotion, error)
+	GetByID(request *get.GetOne[uint]) (*models.Promotion, error)
 	GetAll() ([]*models.Promotion, error)
-	Delete(c *fiber.Ctx, id uint) error
+	Delete(c *fiber.Ctx, request *get.GetOne[uint]) error
 }
 
 type service struct {
 	repo        Repository
-	productRepo product.Repository
-	cartRepo    cart.Repository
 }
 
-func NewService(repo Repository, productRepo product.Repository, cartRepo cart.Repository) Service {
-	return &service{repo: repo, productRepo: productRepo, cartRepo: cartRepo}
+func NewService(repo Repository) Service {
+	return &service{repo: repo}
 }
 
 func (s *service) Create(c *fiber.Ctx, request *CreateRequest) (*models.Promotion, error) {
-	promoCode, err := s.cartRepo.FindPromotionByCode(request.Code)
+	promoCode, err := s.repo.FindPromotionByCode(request.Code)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		logrus.Errorf("find promotion error: %v", err)
 		return nil, err
@@ -63,20 +60,20 @@ func (s *service) Create(c *fiber.Ctx, request *CreateRequest) (*models.Promotio
 	return promotion, nil
 }
 
-func (s *service) Update(c *fiber.Ctx, id uint, request *UpdateRequest) (*models.Promotion, error) {
+func (s *service) Update(c *fiber.Ctx, request *UpdateRequest) (*models.Promotion, error) {
 	promotion := &models.Promotion{}
-	if err := s.repo.FindByID(id, promotion); err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err := s.repo.FindByID(request.ID, promotion); err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		logrus.Errorf("find promotion error: %v", err)
         return nil, err		
 	}
 
-	promoCode, err := s.cartRepo.FindPromotionByCode(request.Code)
+	promoCode, err := s.repo.FindPromotionByCode(request.Code)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		logrus.Errorf("find promotion error: %v", err)
 		return nil, err
 	}
 
-	if promoCode != nil && promoCode.ID!= id {
+	if promoCode != nil && promoCode.ID!= request.ID {
         logrus.Errorf("promotion is already exist: %v", err)
         return nil, errors.New("promotion is already exist")
     }
@@ -86,7 +83,7 @@ func (s *service) Update(c *fiber.Ctx, id uint, request *UpdateRequest) (*models
         logrus.Errorf("find promotion error: %v", err)
         return nil, err
     }
-	if existingPromotion != nil && existingPromotion.ID != id {
+	if existingPromotion != nil && existingPromotion.ID != request.ID {
 		logrus.Errorf("promotion is already exist: %v", request.ProductID)
         return nil, errors.New("promotion is already exist")
     }
@@ -101,9 +98,9 @@ func (s *service) Update(c *fiber.Ctx, id uint, request *UpdateRequest) (*models
 	return promotion, nil
 }
 
-func (s *service) GetByID(id uint) (*models.Promotion, error) {
+func (s *service) GetByID(request *get.GetOne[uint]) (*models.Promotion, error) {
 	promotion := &models.Promotion{}
-	if err := s.repo.FindByID(id, promotion); err != nil {
+	if err := s.repo.FindByID(request.GetID(), promotion); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("promotion not found")
 		}
@@ -124,14 +121,19 @@ func (s *service) GetAll() ([]*models.Promotion, error) {
 	return promotions, nil
 }
 
-func (s *service) Delete(c *fiber.Ctx, id uint) error {
+func (s *service) Delete(c *fiber.Ctx, request *get.GetOne[uint]) error {
 	promotion := &models.Promotion{}
-	if err := s.repo.FindByID(id, promotion); err != nil {
+	if err := s.repo.FindByID(request.ID, promotion); err != nil {
 		logrus.Errorf("find promotion error: %v", err)
 		return err
 	}
 
-	err := s.repo.Delete(id)
+	if err := s.repo.DeletePromotionID(promotion.ID); err != nil {
+		logrus.Errorf("delete promotion error: %v", err)
+		return err
+	}
+	
+	err := s.repo.Delete(promotion.ID)
 	if err != nil {
 		logrus.Errorf("delete promotion error: %v", err)
 		return err

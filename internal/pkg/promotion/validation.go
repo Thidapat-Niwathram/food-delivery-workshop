@@ -9,7 +9,7 @@ func validatePromotionReq(request interface{}) error {
 	validate := validator.New()
 	err := validate.Struct(request)
 	if err != nil {
-		logrus.Error("error validate promotion request: %v", err)
+		logrus.Errorf("error validate promotion request: %v", err)
 		return err
 	}
 	return nil

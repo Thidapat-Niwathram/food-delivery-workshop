@@ -2,7 +2,9 @@ package user
 
 import (
 	"errors"
+	"food-delivery-workshop/internal/get"
 	"food-delivery-workshop/internal/models"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
 	"github.com/sirupsen/logrus"
@@ -12,7 +14,7 @@ import (
 type Service interface {
 	Create(c *fiber.Ctx, request *CreateRequest) error
 	Login(request *LoginRequest) (*models.User, error)
-	GetUserByID(userID uint) (*models.User, error)
+	GetUserByID(request get.GetOne[uint]) (*models.User, error)
 }
 
 type service struct {
@@ -59,9 +61,9 @@ func (s *service) Login(request *LoginRequest) (*models.User, error) {
 	return user, nil
 }
 
-func (s * service) GetUserByID(userID uint) (*models.User, error) {
+func (s * service) GetUserByID(request get.GetOne[uint]) (*models.User, error) {
 	user := &models.User{}
-	if err := s.repo.FindByID(userID, user); err != nil{
+	if err := s.repo.FindByID(request.GetID(), user); err != nil{
 		logrus.Errorf("find user by id error: %v", err)
 		return nil, errors.New("user not found")
 	}
